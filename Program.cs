@@ -100,14 +100,24 @@ namespace Exchange_Cache
         static JsonObject EmailToJson(EmailMessage message)
         {
             return new JsonObject(
-                new KeyValuePair<string, JsonValue>("id", message.Id.UniqueId),
-                new KeyValuePair<string, JsonValue>("folder", FolderPaths[message.ParentFolderId.UniqueId]),
-                new KeyValuePair<string, JsonValue>("datetime", message.DateTimeSent.ToString("O")),
-                new KeyValuePair<string, JsonValue>("subject", message.Subject),
-                new KeyValuePair<string, JsonValue>("flagged", message.Flag.FlagStatus != ItemFlagStatus.NotFlagged),
-                new KeyValuePair<string, JsonValue>("complete", message.Flag.FlagStatus == ItemFlagStatus.Complete),
-                message.Flag.FlagStatus == ItemFlagStatus.Complete ? new KeyValuePair<string, JsonValue>("completed", message.Flag.CompleteDate.ToString("O")) : new KeyValuePair<string, JsonValue>("completed", null),
-                new KeyValuePair<string, JsonValue>("read", message.IsRead)
+                (from pd in message.GetLoadedPropertyDefinitions()
+                 select pd.ToString() switch
+                 {
+                     "Id" => new[] { new KeyValuePair<string, JsonValue>("id", message.Id.UniqueId) },
+                     "ParentFolderId" => new[] { new KeyValuePair<string, JsonValue>("folder", FolderPaths[message.ParentFolderId.UniqueId]) },
+                     "DateTimeCreated" => new[] { new KeyValuePair<string, JsonValue>("created", message.DateTimeCreated.ToString("O")) },
+                     "DateTimeSent" => new[] { new KeyValuePair<string, JsonValue>("sent", message.DateTimeSent.ToString("O")) },
+                     "DateTimeReceived" => new[] { new KeyValuePair<string, JsonValue>("received", message.DateTimeReceived.ToString("O")) },
+                     "LastModifiedTime" => new[] { new KeyValuePair<string, JsonValue>("modified", message.LastModifiedTime.ToString("O")) },
+                     "Subject" => new[] { new KeyValuePair<string, JsonValue>("subject", message.Subject) },
+                     "Flag" => new[] {
+                        new KeyValuePair<string, JsonValue>("flagged", message.Flag.FlagStatus != ItemFlagStatus.NotFlagged),
+                        new KeyValuePair<string, JsonValue>("complete", message.Flag.FlagStatus == ItemFlagStatus.Complete),
+                        message.Flag.FlagStatus == ItemFlagStatus.Complete ? new KeyValuePair<string, JsonValue>("completed", message.Flag.CompleteDate.ToString("O")) : new KeyValuePair<string, JsonValue>("completed", null),
+                    },
+                     "IsRead" => new[] { new KeyValuePair<string, JsonValue>("read", message.IsRead) },
+                     _ => throw new InvalidDataException($"Cannot handle property {pd}")
+                 }).SelectMany(kvp => kvp)
             );
         }
 
@@ -138,7 +148,7 @@ namespace Exchange_Cache
                     };
                     var allView = new ItemView(1000)
                     {
-                        PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.ParentFolderId, ItemSchema.DateTimeSent, ItemSchema.Subject, ItemSchema.Flag, EmailMessageSchema.IsRead),
+                        PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.ParentFolderId, ItemSchema.DateTimeCreated, ItemSchema.DateTimeSent, ItemSchema.DateTimeReceived, ItemSchema.LastModifiedTime, ItemSchema.Subject, ItemSchema.Flag, EmailMessageSchema.IsRead),
                     };
 
                     FindItemsResults<Item> all;

@@ -102,7 +102,7 @@ namespace Exchange_Cache
             return new JsonObject(
                 new KeyValuePair<string, JsonValue>("id", message.Id.UniqueId),
                 new KeyValuePair<string, JsonValue>("folder", FolderPaths[message.ParentFolderId.UniqueId]),
-                new KeyValuePair<string, JsonValue>("datetime", message.DateTimeReceived.ToString("O")),
+                new KeyValuePair<string, JsonValue>("datetime", message.DateTimeSent.ToString("O")),
                 new KeyValuePair<string, JsonValue>("subject", message.Subject),
                 new KeyValuePair<string, JsonValue>("flagged", message.Flag.FlagStatus != ItemFlagStatus.NotFlagged),
                 new KeyValuePair<string, JsonValue>("complete", message.Flag.FlagStatus == ItemFlagStatus.Complete),
@@ -138,7 +138,7 @@ namespace Exchange_Cache
                     };
                     var allView = new ItemView(1000)
                     {
-                        PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.ParentFolderId, ItemSchema.DateTimeReceived, ItemSchema.Subject, ItemSchema.Flag, EmailMessageSchema.IsRead),
+                        PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.ParentFolderId, ItemSchema.DateTimeSent, ItemSchema.Subject, ItemSchema.Flag, EmailMessageSchema.IsRead),
                     };
 
                     FindItemsResults<Item> all;

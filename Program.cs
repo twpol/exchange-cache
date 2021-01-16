@@ -109,12 +109,18 @@ namespace Exchange_Cache
                      "DateTimeSent" => new[] { new KeyValuePair<string, JsonValue>("sent", message.DateTimeSent.ToString("O")) },
                      "DateTimeReceived" => new[] { new KeyValuePair<string, JsonValue>("received", message.DateTimeReceived.ToString("O")) },
                      "LastModifiedTime" => new[] { new KeyValuePair<string, JsonValue>("modified", message.LastModifiedTime.ToString("O")) },
+                     "Sender" => new[] { new KeyValuePair<string, JsonValue>("sender", message.Sender.ToString()) },
+                     "ReceivedBy" => new[] { new KeyValuePair<string, JsonValue>("receiver", message.ReceivedBy.ToString()) },
+                     "From" => new[] { new KeyValuePair<string, JsonValue>("from", message.From.ToString()) },
+                     "ToRecipients" => new[] { new KeyValuePair<string, JsonValue>("to", String.Join(", ", message.ToRecipients.Select(r => r.ToString()))) },
+                     "CcRecipients" => new[] { new KeyValuePair<string, JsonValue>("cc", String.Join(", ", message.CcRecipients.Select(r => r.ToString()))) },
+                     "BccRecipients" => new[] { new KeyValuePair<string, JsonValue>("bcc", String.Join(", ", message.BccRecipients.Select(r => r.ToString()))) },
                      "Subject" => new[] { new KeyValuePair<string, JsonValue>("subject", message.Subject) },
                      "Flag" => new[] {
                         new KeyValuePair<string, JsonValue>("flagged", message.Flag.FlagStatus != ItemFlagStatus.NotFlagged),
                         new KeyValuePair<string, JsonValue>("complete", message.Flag.FlagStatus == ItemFlagStatus.Complete),
                         message.Flag.FlagStatus == ItemFlagStatus.Complete ? new KeyValuePair<string, JsonValue>("completed", message.Flag.CompleteDate.ToString("O")) : new KeyValuePair<string, JsonValue>("completed", null),
-                    },
+                     },
                      "IsRead" => new[] { new KeyValuePair<string, JsonValue>("read", message.IsRead) },
                      _ => throw new InvalidDataException($"Cannot handle property {pd}")
                  }).SelectMany(kvp => kvp)
@@ -148,16 +154,17 @@ namespace Exchange_Cache
                     };
                     var allView = new ItemView(1000)
                     {
-                        PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.ParentFolderId, ItemSchema.DateTimeCreated, ItemSchema.DateTimeSent, ItemSchema.DateTimeReceived, ItemSchema.LastModifiedTime, ItemSchema.Subject, ItemSchema.Flag, EmailMessageSchema.IsRead),
+                        PropertySet = new PropertySet(BasePropertySet.IdOnly),
                     };
 
                     FindItemsResults<Item> all;
                     do
                     {
                         all = await allItems.Folders[0].FindItems(allFilter, allView);
-                        foreach (var item in all.Items)
+                        foreach (var item in all.Items.Cast<EmailMessage>())
                         {
-                            observer.OnNext(item as EmailMessage);
+                            await item.Load(new PropertySet(BasePropertySet.IdOnly, ItemSchema.ParentFolderId, ItemSchema.DateTimeCreated, ItemSchema.DateTimeSent, ItemSchema.DateTimeReceived, ItemSchema.LastModifiedTime, EmailMessageSchema.Sender, EmailMessageSchema.ReceivedBy, EmailMessageSchema.From, EmailMessageSchema.ToRecipients, EmailMessageSchema.CcRecipients, EmailMessageSchema.BccRecipients, ItemSchema.Subject, ItemSchema.Flag, EmailMessageSchema.IsRead));
+                            observer.OnNext(item);
                         }
                         allView.Offset = all.NextPageOffset ?? 0;
                     } while (all.MoreAvailable);

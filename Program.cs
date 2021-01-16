@@ -39,7 +39,7 @@ namespace Exchange_Cache
             service.AutodiscoverUrl(config["email"], redirectionUri => new Uri(redirectionUri).Scheme == "https");
 
             await LoadFolders(service);
-            await GetAllNotJunkMessages(service).ForEachAsync(message => Console.WriteLine(EmailToJson(message).ToString()));
+            await GetAllMessages(service).ForEachAsync(message => Console.WriteLine(EmailToJson(message).ToString()));
 
             return 0;
         }
@@ -121,7 +121,7 @@ namespace Exchange_Cache
             );
         }
 
-        static IObservable<EmailMessage> GetAllNotJunkMessages(ExchangeService service)
+        static IObservable<EmailMessage> GetAllMessages(ExchangeService service)
         {
             return Observable.Create<EmailMessage>(
                 async observer =>
@@ -137,15 +137,8 @@ namespace Exchange_Cache
                         throw new MissingMemberException("AllItems");
                     }
 
-                    // Find the Junk folder.
-                    var junkFolder = await Folder.Bind(service, WellKnownFolderName.JunkEmail);
-
-                    // Find all items that are flagged and not in the Junk folder.
-                    var allFilter = new SearchFilter.SearchFilterCollection(LogicalOperator.And)
-                    {
-                        new SearchFilter.IsEqualTo(ItemSchema.ItemClass, "IPM.Note"),
-                        new SearchFilter.IsNotEqualTo(ItemSchema.ParentFolderId, junkFolder.Id.UniqueId),
-                    };
+                    // Find all emails.
+                    var allFilter = new SearchFilter.IsEqualTo(ItemSchema.ItemClass, "IPM.Note");
                     var allView = new ItemView(1000)
                     {
                         PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.ParentFolderId, ItemSchema.DateTimeCreated, ItemSchema.DateTimeSent, ItemSchema.DateTimeReceived, ItemSchema.LastModifiedTime, ItemSchema.Subject, ItemSchema.Flag, EmailMessageSchema.IsRead),
